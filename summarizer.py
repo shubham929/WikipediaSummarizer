@@ -8,6 +8,9 @@ import json
 from nltk.corpus import wordnet as wn
 from nltk.corpus import wordnet as st
 from time import time
+import threading
+from search import resultCount
+
 
 wordDocFrq = {}
 with open('data_wiki_docFrq.json') as data_file:    
@@ -21,28 +24,50 @@ class Summarizer:
     def __init__(self, title):
         self.article = getJSON(title)
         self.title = self.article['title']
-        try:
-            from google.google import resultCount
-        except Exception as e:
-            raise NameError(type(e).__name__)
-            self.titleImp = 1000
         self.titleImp = resultCount(title)
         self.sections = []
         self.positiveKeywords = ["cricket"]
         self.negativeKeywords = ["family"]
         for section in self.article['sections']:
             self.sections.append(Section(section))
-        self.threshold = 0        
+        self.threshold = 0
 
     def summarize(self):
         
+        threadList = []
+        i = 1
         for section in self.sections:
-            self.sentencePosition(section)
-            self.sectionImportance(section)
-            self.tfIDF(section)
-            self.positiveNess(section)
-            self.negativeNess(section)
+            
+            t1 = threading.Thread(target = self.sentencePosition,
+                                  kwargs = {'section': section})
+            t1.start()
+
+            t2 = threading.Thread(target = self.tfIDF, 
+                                  kwargs = {'section': section})
+            t2.start()
+
+            t3 = threading.Thread(target = self.positiveNess, 
+                                  kwargs = {'section': section})
+            t3.start()
+
+            t4 = threading.Thread(target = self.negativeNess,
+                                  kwargs = {'section': section})
+            t4.start()
+
+            t5 = threading.Thread(target = self.sectionImportance,
+                                  kwargs = {'section': section})
+            t5.start()
+
+            threadList.extend((t1, t2, t3, t4, t5))
+            i += 2
         
+            
+        for thread in threadList:
+            print "..",
+            thread.join()
+            print ",,"
+            
+        print "cat"
         self.calculateScore()
         
     def sentencePosition(self, section):
@@ -53,11 +78,8 @@ class Summarizer:
             pos += 1
         
     def sectionImportance(self, section):
-        try:
-            from google.google import resultCount
-        except Exception as e:
-            raise NameError(type(e).__name__)
-            
+        pass
+        
         count = resultCount(self.title + " " + section.heading)
         section.importance = float(count)/self.titleImp
         for sen in section.sentences:
@@ -84,14 +106,14 @@ class Summarizer:
             for pos in self.positiveKeywords:
                 section.positiveScore = max(section.positiveScore,
                                             self.word_path_similarity(key, pos) + 1)
-
+        
         for sentence in section.sentences:
             sentence.positiveScore = 1
             for word in sentence.words:
                 for pos in self.positiveKeywords:
                     sentence.positiveScore = max(sentence.positiveScore, 
                                             self.word_path_similarity(pos, word) + 1)
-
+        print "out"
 
     def negativeNess(self, section):
         sectionKey = section.heading.split(" ")
