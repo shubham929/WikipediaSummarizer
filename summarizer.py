@@ -19,8 +19,6 @@ wordDocFrq = wordDocFrq['docFrq']
 class Summarizer:
     
     def __init__(self, title):
-        self.t = time()
-        print "start"
         self.article = getJSON(title)
         self.title = self.article['title']
         try:
@@ -38,39 +36,15 @@ class Summarizer:
 
     def summarize(self):
         
-        print time() - self.t,
-        print "summarizing...."
-        self.t = time()
         for section in self.sections:
-            print time()-self.t,
-            print "1"
-            self.t = time()
             self.sentencePosition(section)
-            print time()-self.t,
-            print "2"
-            self.t = time()
             self.sectionImportance(section)
-            print time()-self.t,
-            print "3"
-            self.t = time()
             self.tfIDF(section)
-            print time()-self.t,
-            print "4"
-            self.t = time()
             self.positiveNess(section)
-            print time()-self.t,
-            print "5"
-            self.t = time()
             self.negativeNess(section)
-            print time()-self.t,
-            print "1"
-            self.t = time()
-
+        
         self.calculateScore()
-        print time()-self.t,
-        print "SCORE"
-        self.t = time()
-
+        
     def sentencePosition(self, section):
         nSen = section.nSen
         pos = 1
