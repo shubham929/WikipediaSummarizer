@@ -7,16 +7,20 @@ import nltk.data
 import json
 from nltk.corpus import wordnet as wn
 from nltk.corpus import wordnet as st
+from time import time
 
 wordDocFrq = {}
 with open('data_wiki_docFrq.json') as data_file:    
     wordDocFrq = json.load(data_file)
 
-wordDocFrq = wordDocFrq['docFrq']
 
+
+wordDocFrq = wordDocFrq['docFrq']
 class Summarizer:
     
     def __init__(self, title):
+        self.t = time()
+        print "start"
         self.article = getJSON(title)
         self.title = self.article['title']
         try:
@@ -26,18 +30,46 @@ class Summarizer:
             self.titleImp = 1000
         self.titleImp = resultCount(title)
         self.sections = []
-        self.pWords = []
-        self.nWords = []
+        self.positiveKeywords = ["cricket"]
+        self.negativeKeywords = ["family"]
         for section in self.article['sections']:
             self.sections.append(Section(section))
         self.threshold = 0        
 
     def summarize(self):
+        
+        print time() - self.t,
+        print "summarizing...."
+        self.t = time()
         for section in self.sections:
+            print time()-self.t,
+            print "1"
+            self.t = time()
             self.sentencePosition(section)
+            print time()-self.t,
+            print "2"
+            self.t = time()
             self.sectionImportance(section)
+            print time()-self.t,
+            print "3"
+            self.t = time()
             self.tfIDF(section)
-            
+            print time()-self.t,
+            print "4"
+            self.t = time()
+            self.positiveNess(section)
+            print time()-self.t,
+            print "5"
+            self.t = time()
+            self.negativeNess(section)
+            print time()-self.t,
+            print "1"
+            self.t = time()
+
+        self.calculateScore()
+        print time()-self.t,
+        print "SCORE"
+        self.t = time()
 
     def sentencePosition(self, section):
         nSen = section.nSen
@@ -76,29 +108,33 @@ class Summarizer:
         section.positiveScore = 1
         for key in sectionKey:
             for pos in self.positiveKeywords:
-                section.positiveScore = max(section.positiveScore, word_path_similarity(key, pos) + 1)
+                section.positiveScore = max(section.positiveScore,
+                                            self.word_path_similarity(key, pos) + 1)
 
         for sentence in section.sentences:
             sentence.positiveScore = 1
             for word in sentence.words:
                 for pos in self.positiveKeywords:
-                    sentence.positiveScore = max(sentence.positiveScore , word_path_similarity(pos, word) + 1)
+                    sentence.positiveScore = max(sentence.positiveScore, 
+                                            self.word_path_similarity(pos, word) + 1)
 
 
     def negativeNess(self, section):
         sectionKey = section.heading.split(" ")
         for key in sectionKey:
-            for neg in self.nagativeKeywords:
-                section.negativeScore = min(section.negativeScore, 1 - word_path_similarity(key, neg))
+            for neg in self.negativeKeywords:
+                section.negativeScore = min(section.negativeScore,
+                                            1 - self.word_path_similarity(key, neg))
 
         for sentence in section.sentences:
             sentence.negativeScore = 1
             for word in sentence.words:
                 for neg in self.negativeKeywords:
-                    sentence.negativeScore = min(sentence.negativeScore , 1 - word_path_similarity(neg, word))
+                    sentence.negativeScore = min(sentence.negativeScore,
+                                            1 - self.word_path_similarity(neg, word))
 
     
-    def word_path_similarity(s1, s2):
+    def word_path_similarity(self, s1, s2):
         val = 0
         if(s1.lower == s2.lower):
             return 1.0
@@ -111,14 +147,35 @@ class Summarizer:
 
         return val
 
-    def printSentences(self):
+
+    def calculateScore(self):
         for section in self.sections:
             for sentence in section.sentences:
-                print sentence.sentence,
-                print sentence.tfidf, sentence.pos, sentence.imp,
-                print sentence.tfidf*sentence.pos*sentence.imp
+                sentence.score = sentence.tfidf
+                sentence.score *= sentence.pos
+                sentence.score *= sentence.imp
+                sentence.score *= sentence.positiveScore
+                sentence.score *= sentence.negativeScore
+                sentence.score *= section.positiveScore
+                sentence.score *= section.negativeScore
 
-            
+
+    def printScore(self):
+        for section in self.sections:
+            for sentence in section.sentences:
+                score = 1
+                print sentence.sentence,
+                print tfidf,
+                print sentence.pos
+                print sentence.imp
+                print sentence.positiveScore
+                print sentence.negativeScore
+                print section.positiveScore
+                print section.negativeScore
+                print sentence.score
+
+
+
     def printSummary(self):
         values = []
         for section in self.sections:
@@ -133,9 +190,7 @@ class Summarizer:
             for sentence in section.sentences:
                 if sentence.tfidf*sentence.pos*sentence.imp > self.threshold:
                     print sentence.sentence,
-                
 
-                    
     def summary(self):
         values = []
         out = ""
@@ -149,10 +204,8 @@ class Summarizer:
         
         for section in self.sections:
             for sentence in section.sentences:
-                print self.threshold
                 if sentence.tfidf*sentence.pos*sentence.imp > self.threshold:
                     out += " " + sentence.sentence
-                    print sentence.sentence
         return out
         
     def test(self):
@@ -163,6 +216,10 @@ class Summarizer:
 def summary(url):
     s=Summarizer(url)
     s.summarize()
-    return s.summary()
+    s.printScore()
+
+
+s = "en.wikipedia.org/wiki/Sachin_Tendulkar"
+summary(s)
 
 

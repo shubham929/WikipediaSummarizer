@@ -1,6 +1,6 @@
 import nltk
 import re
-
+from sentence import Sentence
 
 class Section:
     
