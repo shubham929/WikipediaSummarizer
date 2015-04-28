@@ -9,7 +9,7 @@ from nltk.corpus import wordnet as wn
 from nltk.corpus import wordnet as st
 
 wordDocFrq = {}
-with open('data_wiki_docFrq') as data_file:    
+with open('data_wiki_docFrq.json') as data_file:    
     wordDocFrq = json.load(data_file)
 
 wordDocFrq = wordDocFrq['docFrq']
