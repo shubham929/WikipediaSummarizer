@@ -10,6 +10,7 @@ from nltk.corpus import wordnet as st
 from time import time
 import threading
 from search import resultCount
+from stopwords import isStopWord
 
 
 wordDocFrq = {}
@@ -22,6 +23,7 @@ wordDocFrq = wordDocFrq['docFrq']
 class Summarizer:
     
     def __init__(self, title):
+        self.lock = threading.Lock()
         self.article = getJSON(title)
         self.title = self.article['title']
         self.titleImp = resultCount(title)
@@ -31,6 +33,7 @@ class Summarizer:
         for section in self.article['sections']:
             self.sections.append(Section(section))
         self.threshold = 0
+        self.word_path_similarity("cat", "bat")
 
     def summarize(self):
         
@@ -63,9 +66,7 @@ class Summarizer:
         
             
         for thread in threadList:
-            print "..",
             thread.join()
-            print ",,"
             
         print "cat"
         self.calculateScore()
@@ -78,8 +79,7 @@ class Summarizer:
             pos += 1
         
     def sectionImportance(self, section):
-        pass
-        
+
         count = resultCount(self.title + " " + section.heading)
         section.importance = float(count)/self.titleImp
         for sen in section.sentences:
@@ -100,37 +100,62 @@ class Summarizer:
 
     
     def positiveNess(self, section):
+
         sectionKey = section.heading.split(" ")
         section.positiveScore = 1
         for key in sectionKey:
+            key = key.lower()
+            if isStopWord(key):
+                continue
             for pos in self.positiveKeywords:
+                pos = pos.lower()
+                if isStopWord(pos):
+                    continue
                 section.positiveScore = max(section.positiveScore,
                                             self.word_path_similarity(key, pos) + 1)
-        
         for sentence in section.sentences:
             sentence.positiveScore = 1
             for word in sentence.words:
+                word = word.lower()
+                if isStopWord(word):
+                    continue
                 for pos in self.positiveKeywords:
+                    pos = pos.lower()
+                    if isStopWord(pos):
+                        continue
                     sentence.positiveScore = max(sentence.positiveScore, 
                                             self.word_path_similarity(pos, word) + 1)
-        print "out"
 
     def negativeNess(self, section):
+
         sectionKey = section.heading.split(" ")
         for key in sectionKey:
+            key = key.lower()
+            if isStopWord(key):
+                continue
             for neg in self.negativeKeywords:
+                neg = neg.lower()
+                if isStopWord(neg):
+                    continue
                 section.negativeScore = min(section.negativeScore,
                                             1 - self.word_path_similarity(key, neg))
 
         for sentence in section.sentences:
             sentence.negativeScore = 1
             for word in sentence.words:
+                word = word.lower()
+                if isStopWord(word):
+                    continue
                 for neg in self.negativeKeywords:
+                    neg = neg.lower()
+                    if isStopWord(neg):
+                        continue
                     sentence.negativeScore = min(sentence.negativeScore,
                                             1 - self.word_path_similarity(neg, word))
 
     
     def word_path_similarity(self, s1, s2):
+        self.lock.acquire()
         val = 0
         if(s1.lower == s2.lower):
             return 1.0
@@ -140,7 +165,7 @@ class Summarizer:
         for t1 in ss1:
             for t2 in ss2:
                 val = max(wn.path_similarity(t1, t2), val)
-
+        self.lock.release()
         return val
 
 
@@ -161,7 +186,7 @@ class Summarizer:
             for sentence in section.sentences:
                 score = 1
                 print sentence.sentence,
-                print tfidf,
+                print sentence.tfidf,
                 print sentence.pos
                 print sentence.imp
                 print sentence.positiveScore
