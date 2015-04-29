@@ -19,7 +19,8 @@ def resultCount(query):
     lock.release()
     soup = BeautifulSoup(html)
     data = soup.find("div", {"id": "resultStats"})
-    if type(data) == None:
+    if data == None:
+        print query
         return 1
     out = re.search(r'About ([0-9,]*) results', data.text).group(1)
     out = out.replace(",", "")
